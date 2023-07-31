@@ -5,7 +5,8 @@ const CRAWL_LIMIT = 5;
 let current_crawl_amount = 0;
 
 const crawl = new Crawler({
-  userAgent: "Just-A-Test"
+  userAgent: "Just-A-Test",
+  failOpen: true
 });
 
 crawl.init("https://developer.mozilla.org/en-US/docs/Web/HTTP/Status");

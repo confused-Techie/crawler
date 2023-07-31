@@ -20,6 +20,7 @@ class Crawler {
   constructor(opts = {}) {
     this.userAgent = opts.userAgent ?? `${process.os}/Crawler`;
     this.waitTime = opts.waitTime ?? 2000;
+    this.failOpen = opts.failOpen ?? false;
     this.emitter = new EventEmitter();
 
     this.urlQueue = opts.urlQueue ?? new URLQueue();
@@ -49,6 +50,9 @@ class Crawler {
         // Crawling went okay.
         // So we can now emit that we have successfully crawled a page, providing
         // our details, then of course we want to add the links received to our url queue
+
+        crawled.content.pageURL = url;
+        
         this.emitter.emit("crawling:crawled", crawled.content);
 
         // Then ensure we add every new link to our queue
@@ -149,7 +153,7 @@ class Crawler {
       if (robotsFile.statusCode !== 200) {
         // Seems this website does not have a robots.txt
         // We could stop parsing, but for now, lets just assume it's fine
-        return new Robots("User-agent: *\nAllow: /", url, this.userAgent);
+        return new Robots(`User-agent: *\n${this.failOpen ? "Allow" : "Disallow"}: /`, url, this.userAgent);
       }
 
       this.robotsCache.set(url, robotsFile.body);
@@ -158,7 +162,7 @@ class Crawler {
     } catch(err) {
       console.error(err);
 
-      return new Robots("User-agent: *\nAllow: /", url, this.userAgent);
+      return new Robots(`User-agent: *\n${this.failOpen ? "Allow" : "Disallow"}: /`, url, this.userAgent);
     }
 
   }

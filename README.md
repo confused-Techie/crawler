@@ -37,7 +37,8 @@ The data returned by `crawling:crawled` has it's own special format that you sho
   },
   "favicon": "",
   "pageTitle": "",
-  "pageDescription": ""
+  "pageDescription": "",
+  "pageURL": ""
 }
 ```
 
