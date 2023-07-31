@@ -22,7 +22,7 @@ class URLQueue {
     return url;
   }
 
-  getLast() {
+  getFirst() {
     if (this.queue.length > 0) {
       let url = this.queue.shift();
       this.crawledUrls.push(url);

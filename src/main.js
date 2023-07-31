@@ -15,13 +15,15 @@ const searchAST = require("./searchAST.js");
 const resolveLinks = require("./resolveLinks.js");
 const URLQueue = require("./urlQueue.js");
 
+module.exports =
 class Crawler {
-  constructor(userAgent) {
-    this.userAgent = userAgent;
+  constructor(opts = {}) {
+    this.userAgent = opts.userAgent ?? `${process.os}/Crawler`;
+    this.waitTime = opts.waitTime ?? 2000;
     this.emitter = new EventEmitter();
 
-    this.urlQueue = new URLQueue();
-    this.robotsCache = new Map();
+    this.urlQueue = opts.urlQueue ?? new URLQueue();
+    this.robotsCache = opts.robotsCache ?? new Map();
   }
 
   init(url) {
@@ -33,8 +35,7 @@ class Crawler {
 
     while(this.urlQueue.length() > 0) {
 
-      let url = this.urlQueue.getLast();
-      console.log(`Got URL: ${url}`);
+      let url = this.urlQueue.getFirst();
 
       try {
         let crawled = await this.crawlUrl(url);
@@ -42,7 +43,7 @@ class Crawler {
         if (!crawled.ok) {
           // We have failed to crawl this URL
           this.emitter.emit("crawling:failed", crawled.content);
-          break;
+          continue;
         }
 
         // Crawling went okay.
@@ -60,12 +61,14 @@ class Crawler {
         }
 
         // Now we can go ahead and break to start the next URL in the list
-        //return;
+        // After a short wait to be nice to others servers
+        await new Promise(r => setTimeout(r, this.waitTime));
+        continue;
 
       } catch(err) {
         console.log(err);
         this.emitter.emit("crawling:error", err);
-        break;
+        continue;
       }
 
     }
@@ -165,5 +168,3 @@ class Crawler {
   }
 
 }
-
-module.exports = Crawler;

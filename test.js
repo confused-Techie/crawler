@@ -4,7 +4,9 @@ const Crawler = require("./src/main.js");
 const CRAWL_LIMIT = 5;
 let current_crawl_amount = 0;
 
-const crawl = new Crawler("Just-A-Test");
+const crawl = new Crawler({
+  userAgent: "Just-A-Test"
+});
 
 crawl.init("https://developer.mozilla.org/en-US/docs/Web/HTTP/Status");
 

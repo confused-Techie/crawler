@@ -18,6 +18,22 @@ function handleLinks(obj, url) {
     obj.textLinks[node] = resolveLink(obj.textLinks[node], url);
   }
 
+  if (typeof obj?.favicon === "string") {
+    obj.favicon = resolveLink(obj.favicon, url);
+  }
+
+  if (typeof obj.og?.image === "string") {
+    obj.og.image = resolveLink(obj.og.image, url);
+  }
+
+  if (typeof obj.og?.audio === "string") {
+    obj.og.audio = resolveLink(obj.og.audio, url);
+  }
+
+  if (typeof obj.og?.video === "string") {
+    obj.og.video = resolveLink(obj.og.video, url);
+  }
+
   return obj;
 }
 

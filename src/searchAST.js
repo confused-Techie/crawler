@@ -25,18 +25,26 @@ function searchAST(ast) {
       returnObj.pageTitle = ast?.children[0]?.content;
     } else if (typeof ast?.attrs === "object" && ast.attrs?.rel === "icon" && typeof ast.attrs?.href === "string") {
       returnObj.favicon = ast.attrs.href;
-    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:title" && typeof ast.attrs?.content === "string") {
+    } else if (hasOgValue("og:title", ast)) {
       returnObj.og.title = ast.attrs.content;
-    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:url" && typeof ast.attrs?.content === "string") {
+    } else if (hasOgValue("og:url", ast)) {
       returnObj.og.url = ast.attrs.content;
-    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:locale" && typeof ast.attrs?.content === "string") {
+    } else if (hasOgValue("og:locale", ast)) {
       returnObj.og.locale = ast.attrs.content;
     } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.name === "description" && typeof ast.attrs?.content === "string") {
       returnObj.pageDescription = ast.attrs.content;
-    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:description" && typeof ast.attrs?.content === "string") {
+    } else if (hasOgValue("og:description", ast)) {
       returnObj.og.description = ast.attrs.content;
-    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:image" && typeof ast.attrs?.content === "string") {
+    } else if (hasOgValue("og:image", ast)) {
       returnObj.og.image = ast.attrs.content;
+    } else if (hasOgValue("og:type", ast)) {
+      returnObj.og.type = ast.attrs.content;
+    } else if (hasOgValue("og:audio", ast)) {
+      returnObj.og.audio = ast.attrs.content;
+    } else if (hasOgValue("og:video", ast)) {
+      returnObj.og.video = ast.attrs.content;
+    } else if (hasOgValue("og:site_name")) {
+      returnObj.og.site_name = ast.attrs.content;
     } else if (ast?.type === "tag" && ast?.name === "a" && typeof ast?.attrs === "object" && typeof ast.attrs?.href === "string") {
       // We have encountered a link here. But we want to see if this link as any text defining it
 
@@ -60,6 +68,14 @@ function searchAST(ast) {
   }
 
   return returnObj;
+}
+
+function hasOgValue(value, node) {
+  if (node?.name === "meta" && typeof node?.attrs === "object" && node.attrs?.property === value && typeof node.attrs?.content === "string") {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 module.exports = searchAST;
