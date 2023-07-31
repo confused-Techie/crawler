@@ -5,33 +5,36 @@
  */
 
 const EventEmitter = require("node:events");
-const http = require("node:http");
-const https = require("node:https");
 const { URL } = require("node:url");
+const { Buffer } = require("node:buffer");
 const semver = require("semver");
 const htmlAST = require("html-to-ast");
+const { got } = require("got-cjs");
 const Robots = require("./robots.js");
 const searchAST = require("./searchAST.js");
+const resolveLinks = require("./resolveLinks.js");
+const URLQueue = require("./urlQueue.js");
 
 class Crawler {
   constructor(userAgent) {
     this.userAgent = userAgent;
     this.emitter = new EventEmitter();
 
-    this.urlQueue = [];
+    this.urlQueue = new URLQueue();
     this.robotsCache = new Map();
   }
 
   init(url) {
     // Used to set the initial URL prior to starting crawling
-    this.urlQueue.push(url);
+    this.urlQueue.add(url);
   }
 
   async crawl() {
 
-    while(this.urlQueue.length > 0) {
+    while(this.urlQueue.length() > 0) {
 
-      let url = this.urlQueue.shift();
+      let url = this.urlQueue.getLast();
+      console.log(`Got URL: ${url}`);
 
       try {
         let crawled = await this.crawlUrl(url);
@@ -41,6 +44,23 @@ class Crawler {
           this.emitter.emit("crawling:failed", crawled.content);
           break;
         }
+
+        // Crawling went okay.
+        // So we can now emit that we have successfully crawled a page, providing
+        // our details, then of course we want to add the links received to our url queue
+        this.emitter.emit("crawling:crawled", crawled.content);
+
+        // Then ensure we add every new link to our queue
+        for (let i = 0; i < crawled.content.lonelyLinks.length; i++) {
+          this.urlQueue.add(crawled.content.lonelyLinks[i]);
+        }
+
+        for (let node in crawled.content.textLinks) {
+          this.urlQueue.add(crawled.content.textLinks[node]);
+        }
+
+        // Now we can go ahead and break to start the next URL in the list
+        //return;
 
       } catch(err) {
         console.log(err);
@@ -77,23 +97,24 @@ class Crawler {
     // Now with our robots file, lets ensure we can crawl this URL
     if (robots.canCrawl(url)) {
 
-      let urlParsed = new URL(url);
-
       let page = await this.preformRequest({
-        hostname: urlParsed.hostname,
-        path: urlParsed.path,
+        url: url,
         method: "GET",
-        port: urlParsed.port,
-        protocol: urlParsed.protocol,
         headers: {
-          "Accept": "*",
+          "Accept": "*/*",
           "User-Agent": this.userAgent
         }
       });
 
-      let details = await searchAST(page.body);
+      let details = await searchAST(htmlAST.parse(page.body));
 
-      // TODO: Do something with these details
+      details = resolveLinks.handleLinks(details, url);
+
+      return {
+        ok: true,
+        content: details
+      };
+
     } else {
       this.emitter.emit("crawling:disallowed", url);
       return {
@@ -110,47 +131,37 @@ class Crawler {
       return this.robotsCache.get(urlParsed.origin);
     }
 
-    let robotsFile = await this.preformRequest({
-      hostname: urlParsed.hostname,
-      path: "/robots.txt",
-      method: "GET",
-      port: urlParsed.port,
-      protocol: urlParsed.protocol,
-      headers: {
-        "Accept": "*",
-        "User-Agent": this.userAgent
-      }
-    });
+    urlParsed.pathname = "/robots.txt";
 
-    if (robotsFile.statusCode !== 200) {
-      // Seems this website does not have a robots.txt
-      // We could stop parsing, but for now, lets just assume it's fine
+    try {
+      let robotsFile = await this.preformRequest({
+        url: urlParsed.toString(),
+        method: "GET",
+        headers: {
+          "Accept": "*/*",
+          "User-Agent": this.userAgent
+        }
+      });
+
+      if (robotsFile.statusCode !== 200) {
+        // Seems this website does not have a robots.txt
+        // We could stop parsing, but for now, lets just assume it's fine
+        return new Robots("User-agent: *\nAllow: /", url, this.userAgent);
+      }
+
+      this.robotsCache.set(url, robotsFile.body);
+
+      return new Robots(robotsFile.body, url, this.userAgent);
+    } catch(err) {
+      console.error(err);
+
       return new Robots("User-agent: *\nAllow: /", url, this.userAgent);
     }
 
-    this.robotsCache.set(url, robotsFile.body);
-
-    return new Robots(robotsFile.body, url, this.userAgent);
   }
 
   async preformRequest(opts) {
-    let data = "";
-    return new Promise((resolve, reject) => {
-      https.get(opts, (res) => {
-
-        res.on("data", (d) => {
-          data += d;
-        });
-
-        res.on("end", () => {
-          res.body = data;
-          resolve(res);
-        });
-        //resolve(res);
-      }).on("error", (err) => {
-        reject(err);
-      });
-    });
+    return await got(opts);
   }
 
 }

@@ -1,49 +1,65 @@
 /**
  * This module is intended to take in an `html-to-ast` AST of HTML
- * And search along it until it is able to find the robots entry, where if not
- * found, will return false
+ * And search along each node for various peices of data that we choose to care about
  */
 
-// TODO This should stop looking only for robots and be able to find everything of interest
-// on any given page. Then aborting if the robots file says so
+let returnObj = {};
+returnObj.og = {};
+returnObj.lonelyLinks = [];
+returnObj.textLinks = {};
 
 function searchAST(ast) {
 
   if (Array.isArray(ast)) {
     for (let node of ast) {
-      let res = searchAST(node);
-
-      if (typeof res !== "boolean") {
-        return res;
-      }
+      searchAST(node);
     }
   } else if (typeof ast === "object") {
 
-    if (ast.hasOwnProperty("name") && ast.name === "body") {
-      // We know the robots.txt will not show up within the body, so we exit early
-      return false;
-    } else if (ast.hasOwnProperty("type") && ast.type === "tag" && ast.hasOwnProperty("name") && ast.name === "meta") {
+    // Here we can search for any specific peice of data we want or care about on
+    // a webpage, and add it to our return object. The way the data is added, must
+    // be formalized at some point, but also flexible enough, so that the changing
+    // can accurately be added and reflected.
 
-      // We are in a meta tag, likely in the header, search for relevant robots fields here
-      if (ast?.attrs?.name === "robots") {
-        return ast?.attrs?.content ?? false;
-      }
+    if (ast?.name === "title") {
+      returnObj.pageTitle = ast?.children[0]?.content;
+    } else if (typeof ast?.attrs === "object" && ast.attrs?.rel === "icon" && typeof ast.attrs?.href === "string") {
+      returnObj.favicon = ast.attrs.href;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:title" && typeof ast.attrs?.content === "string") {
+      returnObj.og.title = ast.attrs.content;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:url" && typeof ast.attrs?.content === "string") {
+      returnObj.og.url = ast.attrs.content;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:locale" && typeof ast.attrs?.content === "string") {
+      returnObj.og.locale = ast.attrs.content;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.name === "description" && typeof ast.attrs?.content === "string") {
+      returnObj.pageDescription = ast.attrs.content;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:description" && typeof ast.attrs?.content === "string") {
+      returnObj.og.description = ast.attrs.content;
+    } else if (ast?.name === "meta" && typeof ast?.attrs === "object" && ast.attrs?.property === "og:image" && typeof ast.attrs?.content === "string") {
+      returnObj.og.image = ast.attrs.content;
+    } else if (ast?.type === "tag" && ast?.name === "a" && typeof ast?.attrs === "object" && typeof ast.attrs?.href === "string") {
+      // We have encountered a link here. But we want to see if this link as any text defining it
 
-    } else if (ast.hasOwnProperty("children") && Array.isArray(ast.children)) {
-      for (let node of ast.children) {
-        let res = searchAST(node);
+      if (Array.isArray(ast?.children) && ast.children.length == 1 && ast.children[0]?.type === "text" && typeof ast.children[0]?.content === "string") {
+        // There is text that comes along with this. Lets add the text and link, in case the text is helpful
 
-        if (typeof res !== "boolean") {
-          return res;
-        }
+        returnObj.textLinks[ast.children[0].content] = ast.attrs.href;
+      } else {
+        // We couldn't find text that we know is relevant, so we will just add the link
+
+        returnObj.lonelyLinks.push(ast.attrs.href);
       }
     } else {
-      return false;
+      // If we can't find anything to do for this node, lets descend down the children
+      if (Array.isArray(ast?.children)) {
+        for (let node of ast.children) {
+          searchAST(node);
+        }
+      }
     }
   }
 
-  // we have run through all options
-  return false;
+  return returnObj;
 }
 
 module.exports = searchAST;

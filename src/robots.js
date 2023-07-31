@@ -7,7 +7,7 @@ class Robots {
     this.userAgent = userAgent;
     this.parsed;
 
-    this.parser = robotsParsed({
+    this.parser = robotsParser({
       allowOnNeutral: false,
       userAgent: this.userAgent
     });
