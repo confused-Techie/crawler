@@ -33,9 +33,11 @@ crawl.emitter.on("crawling:crawled", (data) => {
 
   if (current_crawl_amount === CRAWL_LIMIT || current_crawl_amount > CRAWL_LIMIT) {
     // empty the URL queue to register an end
-    crawl.urlQueue.empty();
+    //crawl.urlQueue.empty();
+    crawl.kill();
+    console.log("Called crawl.kill()");
     // empty doesn't seem to work. Will have to figure that out, but for now
-    process.exit(0);
+    //process.exit(0);
   }
 });
 

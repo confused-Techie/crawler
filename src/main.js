@@ -25,6 +25,8 @@ class Crawler {
 
     this.urlQueue = opts.urlQueue ?? new URLQueue();
     this.robotsCache = opts.robotsCache ?? new Map();
+
+    this.killed = true;
   }
 
   init(url) {
@@ -34,7 +36,7 @@ class Crawler {
 
   async crawl() {
 
-    while(this.urlQueue.length() > 0) {
+    while(this.urlQueue.length() > 0 && this.killed) {
 
       let url = this.urlQueue.getFirst();
 
@@ -52,7 +54,7 @@ class Crawler {
         // our details, then of course we want to add the links received to our url queue
 
         crawled.content.pageURL = url;
-        
+
         this.emitter.emit("crawling:crawled", crawled.content);
 
         // Then ensure we add every new link to our queue
@@ -171,4 +173,7 @@ class Crawler {
     return await got(opts);
   }
 
+  kill() {
+    this.killed = false;
+  }
 }
