@@ -26,7 +26,7 @@ class Crawler {
     this.urlQueue = opts.urlQueue ?? new URLQueue();
     this.robotsCache = opts.robotsCache ?? new Map();
 
-    this.killed = true;
+    this.killed = false;
   }
 
   init(url) {
@@ -36,7 +36,7 @@ class Crawler {
 
   async crawl() {
 
-    while(this.urlQueue.length() > 0 && this.killed) {
+    while(this.urlQueue.length() > 0 && !this.killed) {
 
       let url = this.urlQueue.getFirst();
 
@@ -174,6 +174,6 @@ class Crawler {
   }
 
   kill() {
-    this.killed = false;
+    this.killed = true;
   }
 }
